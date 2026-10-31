@@ -1,5 +1,5 @@
 # Full configuration reference and advanced options:
-# https://github.com/livekit/livekit/blob/master/livekit.yaml
+# https://github.com/livekit/livekit/blob/master/config-sample.yaml
 
 rtc:
   udp_port: 7882
@@ -8,6 +8,7 @@ rtc:
 
 turn:
   enabled: true
+  udp_port: 3478
 
 audio:
   active_red_encoding: true
