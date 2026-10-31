@@ -2,7 +2,7 @@
 
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=flat-square&logo=docker&logoColor=white)](https://www.docker.com/)
 [![LiveKit](https://img.shields.io/badge/LiveKit-SFU-00D1B2?style=flat-square&logo=webrtc&logoColor=white)](https://livekit.io/)
-[![Next.js](https://img.shields.io/badge/Next.js-15+-000000?style=flat-square&logo=next.js&logoColor=white)](https://nextjs.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-15-000000?style=flat-square&logo=next.js&logoColor=white)](https://nextjs.org/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg?style=flat-square)](LICENSE)
 
 Self-hosted WebRTC video conferencing stack comprising the [LiveKit SFU Server](https://livekit.io/), the [LiveKit Meet](https://github.com/livekit-examples/meet) Next.js web client, and an automated TLS reverse proxy using Caddy.
@@ -38,7 +38,27 @@ graph TD
 
 ---
 
-## Network & Firewall Requirements
+## System & Network Requirements
+
+### 1. Kernel UDP Buffer Sizing
+WebRTC media traffic uses UDP bursts. To prevent packet loss, increase the maximum socket receive and send buffer sizes.
+
+For baseline deployments (~3 active participants), set at least:
+
+`/etc/sysctl.d/99-livekit.conf`
+```ini
+net.core.rmem_max=8388608
+net.core.wmem_max=8388608
+```
+
+Apply changes:
+```bash
+sudo sysctl --system
+```
+
+*(For larger rooms or production deployments under heavy load, LiveKit recommends higher values such as `67108864`).*
+
+### 2. Firewall / Port Allocations
 
 The following ports must be reachable on the host:
 
@@ -56,17 +76,9 @@ The following ports must be reachable on the host:
 
 ### 1. Clone Repository
 
-> [!IMPORTANT]
-> The frontend is included as a Git submodule. Clone with the `--recurse-submodules` flag:
-
 ```bash
-git clone --recurse-submodules https://github.com/mikhailde/livekit-meet-docker.git
+git clone https://github.com/mikhailde/livekit-meet-docker.git
 cd livekit-meet-docker
-```
-
-If already cloned without this flag, initialize submodules manually:
-```bash
-git submodule update --init --recursive
 ```
 
 ### 2. Configuration Setup
@@ -120,7 +132,7 @@ audio:
 ```
 
 > [!NOTE]
-> For advanced server options (Redis clustering, TURN authentication, Webhooks, custom codecs), refer to the official [livekit.yaml reference](https://github.com/livekit/livekit/blob/master/livekit.yaml).
+> For advanced server options (Redis clustering, TURN authentication, Webhooks, custom codecs), refer to the official [config-sample.yaml reference](https://github.com/livekit/livekit/blob/master/config-sample.yaml).
 
 ### 3. (Optional) Custom Minimal UI
 
@@ -132,6 +144,8 @@ cp templates/app/page.tsx meet/app/page.tsx
 ```
 
 ### 4. Build and Launch
+
+Build and start the services in detached mode:
 
 ```bash
 docker compose up -d --build
@@ -171,9 +185,10 @@ To route traffic through an existing reverse proxy (e.g., Nginx, Traefik, NPM) i
   docker compose logs -f livekit
   ```
 
-- **Update frontend submodule:**
+- **Update the Meet application (Git Subtree):**
+  The `meet` folder is tracked via Git subtree. To pull changes from upstream:
   ```bash
-  git submodule update --remote --merge
+  git subtree pull --prefix meet https://github.com/livekit-examples/meet.git main --squash
   docker compose up -d --build meet
   ```
 
@@ -193,7 +208,7 @@ livekit-meet-docker/
 │   ├── Caddyfile              # Ingress routing rules
 │   ├── livekit.yaml           # SFU / WebRTC configuration
 │   └── livekit.yaml.example
-├── meet/                      # Git submodule (LiveKit Meet application)
+├── meet/                      # LiveKit Meet application (managed via Git subtree)
 ├── templates/                 # Optional minimal UI replacements
 ├── Dockerfile                 # Multi-stage Next.js image definition
 ├── docker-compose.yml         # Service orchestration definition
@@ -207,7 +222,7 @@ livekit-meet-docker/
 ## References
 
 - [LiveKit Documentation](https://docs.livekit.io/)
-- [LiveKit Server Configuration Reference](https://github.com/livekit/livekit/blob/master/livekit.yaml)
+- [LiveKit Server Sample Configuration](https://github.com/livekit/livekit/blob/master/config-sample.yaml)
 - [LiveKit Meet Source Repository](https://github.com/livekit-examples/meet)
 
 ---
