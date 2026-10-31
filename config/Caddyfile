@@ -1,0 +1,10 @@
+{$DOMAIN} {
+    @livekit path /rtc* /twirp*
+    handle @livekit {
+        reverse_proxy livekit:7880
+    }
+
+    handle {
+        reverse_proxy meet:3000
+    }
+}

@@ -1,0 +1,21 @@
+# Environment & Secrets
+.env
+.env*.local
+build.env
+livekit.yaml
+
+# Build artifacts & Dependencies
+meet/.next
+meet/node_modules
+meet/out
+
+# Logs & OS files
+*.log
+.DS_Store
+Thumbs.db
+
+# IDE & Editors
+.idea/
+.vscode/
+*.swp
+*.swo

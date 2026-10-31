@@ -1,0 +1,84 @@
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "3"
+
+services:
+  livekit:
+    image: livekit/livekit-server:latest
+    container_name: livekit-server
+    restart: unless-stopped
+    command: --config /etc/livekit.yaml
+    environment:
+      LIVEKIT_KEYS: "${LIVEKIT_API_KEY}: ${LIVEKIT_API_SECRET}"
+    volumes:
+      - ./config/livekit.yaml:/etc/livekit.yaml:ro
+    ports:
+      - "7881:7881"
+      - "7882:7882/udp"
+      - "3478:3478/udp"
+      - "127.0.0.1:7880:7880"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:7880/"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    ulimits:
+      nofile: 65535
+    logging: *logging
+    networks: [proxy-net]
+
+  meet:
+    build: .
+    container_name: livekit-meet
+    restart: unless-stopped
+    environment:
+      - LIVEKIT_URL
+      - LIVEKIT_API_KEY
+      - LIVEKIT_API_SECRET
+    ports:
+      - "127.0.0.1:3000:3000"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    depends_on:
+      livekit:
+        condition: service_healthy
+    logging: *logging
+    networks: [proxy-net]
+
+  caddy:
+    profiles: [caddy]
+    image: caddy:alpine
+    container_name: livekit-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - DOMAIN
+    volumes:
+      - ./config/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      livekit:
+        condition: service_healthy
+      meet:
+        condition: service_healthy
+    logging: *logging
+    networks: [proxy-net]
+
+volumes:
+  caddy_data:
+  caddy_config:
+
+networks:
+  proxy-net:
+    name: ${DOCKER_NETWORK:-meet-net}
+    external: ${EXTERNAL_NETWORK:-false}
