@@ -1,5 +1,4 @@
 FROM node:alpine AS base
-RUN apk add --no-cache libc6-compat
 WORKDIR /app
 RUN npm install -g pnpm
 
@@ -15,8 +14,6 @@ COPY build.env* ./
 RUN if [ -f build.env ]; then cp build.env .env.local; fi
 
 ENV NODE_ENV=production
-ENV HOSTNAME=0.0.0.0
-ENV PORT=3000
 ENV NEXT_TELEMETRY_DISABLED=1
 
 RUN pnpm build
@@ -26,7 +23,6 @@ FROM node:alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
-ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
 ENV NEXT_TELEMETRY_DISABLED=1
 
