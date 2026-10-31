@@ -1,4 +1,0 @@
-[submodule "meet"]
-	path = meet
-	url = https://github.com/livekit-examples/meet.git
-	ignore = dirty
