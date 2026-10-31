@@ -1,20 +1,16 @@
-# 1. Базовый образ
 FROM node:alpine AS base
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
-RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN npm install -g pnpm
 
-# 2. Установка зависимостей
 FROM base AS deps
 COPY meet/package.json meet/pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 
-# 3. Сборка приложения
 FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
 COPY meet/ ./
 
-# Полностью подключаем build.env для Next.js сборщика
 COPY build.env* ./
 RUN if [ -f build.env ]; then cp build.env .env.local; fi
 
@@ -26,7 +22,6 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN pnpm build
 RUN pnpm prune --prod
 
-# 4. Финальный легковесный образ
 FROM node:alpine AS runner
 WORKDIR /app
 
