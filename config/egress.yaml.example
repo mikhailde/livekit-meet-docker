@@ -1,0 +1,10 @@
+# Full configuration reference and advanced options:
+# https://docs.livekit.io/home/self-hosting/egress/
+
+ws_url: ws://livekit:7880
+insecure: true
+
+health_port: 8081
+
+redis:
+  address: redis:6379

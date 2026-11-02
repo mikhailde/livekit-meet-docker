@@ -5,6 +5,20 @@ x-logging: &logging
     max-file: "3"
 
 services:
+  redis:
+    profiles: [egress]
+    image: redis:alpine
+    container_name: livekit-redis
+    restart: unless-stopped
+    command: redis-server --save "" --appendonly no
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+    logging: *logging
+    networks: [proxy-net]
+
   livekit:
     image: livekit/livekit-server:latest
     container_name: livekit-server
@@ -30,6 +44,32 @@ services:
     logging: *logging
     networks: [proxy-net]
 
+  egress:
+    profiles: [egress]
+    image: livekit/egress:latest
+    container_name: livekit-egress
+    restart: unless-stopped
+    environment:
+      EGRESS_CONFIG_FILE: /etc/egress.yaml
+      LIVEKIT_API_KEY: "${LIVEKIT_API_KEY}"
+      LIVEKIT_API_SECRET: "${LIVEKIT_API_SECRET}"
+    volumes:
+      - ./config/egress.yaml:/etc/egress.yaml:ro
+    shm_size: "1gb"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8081/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    depends_on:
+      redis:
+        condition: service_healthy
+      livekit:
+        condition: service_healthy
+    logging: *logging
+    networks: [proxy-net]
+
   meet:
     build: .
     container_name: livekit-meet
@@ -38,6 +78,11 @@ services:
       - LIVEKIT_URL
       - LIVEKIT_API_KEY
       - LIVEKIT_API_SECRET
+      - S3_KEY_ID
+      - S3_KEY_SECRET
+      - S3_BUCKET
+      - S3_ENDPOINT
+      - S3_REGION
     ports:
       - "127.0.0.1:3000:3000"
     healthcheck:

@@ -13,10 +13,11 @@ Consult the official [LiveKit Documentation](https://docs.livekit.io/) for detai
 
 ## Highlights
 
-- **WebRTC SFU:** Low-latency selective forwarding unit for multi-party audio/video conferencing.
+- **WebRTC SFU:** Low-latency architecture for multi-party audio/video conferencing.
 - **End-to-End Encryption (E2EE):** Built-in client-side encryption.
 - **Noise Cancellation:** Client-side RNNoise audio processor with zero cloud dependencies.
-- **Automated SSL/TLS:** Automatic certificate management (Let's Encrypt / ZeroSSL) and HTTP/3 via Caddy.
+- **Room Recording:** Server-side recording to S3-compatible storage via Egress.
+- **Automated SSL/TLS:** Certificate management (Let's Encrypt / ZeroSSL) and HTTP/3 via Caddy.
 - **Optimized Container:** Multi-stage Next.js build based on Alpine Linux running under a non-root user.
 - **Modular Ingress:** Run with the bundled Caddy reverse proxy or integrate into an existing network (Nginx, Traefik, NPM).
 
@@ -90,6 +91,8 @@ Copy the example configuration files:
 cp .env.example .env
 cp build.env.example build.env
 cp config/livekit.yaml.example config/livekit.yaml
+# For 'egress' profile (recording):
+# cp config/egress.yaml.example config/egress.yaml
 ```
 
 Generate API credentials using the official LiveKit Docker image:
@@ -101,21 +104,36 @@ docker run --rm livekit/livekit-server generate-keys
 Configure `.env` with your domain and generated credentials:
 
 ```env
-DOMAIN=meet.yourdomain.com
-LIVEKIT_URL=wss://meet.yourdomain.com
-LIVEKIT_API_KEY=APIxxxxxxxxxxxx
-LIVEKIT_API_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+DOMAIN=meet.example.com
+LIVEKIT_URL=wss://meet.example.com
+
+# Generate via: docker run --rm livekit/livekit-server generate-keys
+LIVEKIT_API_KEY=your_api_key
+LIVEKIT_API_SECRET=your_api_secret
+
+# Profiles (comma-separated):
+#   caddy  - Automated TLS reverse proxy (omit if using external proxy)
+#   egress - Room recording (requires S3 credentials & redis in livekit.yaml)
+COMPOSE_PROFILES=caddy
 
 DOCKER_NETWORK=meet-net
-COMPOSE_PROFILES=caddy
 EXTERNAL_NETWORK=false
+
+# S3 (for egress profile)
+S3_KEY_ID=your_s3_access_key
+S3_KEY_SECRET=your_s3_secret_key
+S3_BUCKET=your_s3_bucket_name
+S3_ENDPOINT=https://s3.amazonaws.com
+S3_REGION=us-east-1
 ```
 
 Configure frontend build settings in `build.env`:
 
 ```env
-# Enables the settings menu and built-in RNNoise audio filter
 NEXT_PUBLIC_SHOW_SETTINGS_MENU=true
+
+# Uncomment for 'egress' profile:
+# NEXT_PUBLIC_LK_RECORD_ENDPOINT=/api/record
 ```
 
 Review `config/livekit.yaml`:
@@ -131,6 +149,10 @@ turn:
 
 audio:
   active_red_encoding: true
+
+# Uncomment if using the 'egress' profile for recording:
+# redis:
+#   address: redis:6379
 ```
 
 > [!NOTE]
@@ -159,6 +181,26 @@ Monitor container health and certificate generation:
 docker compose ps
 docker compose logs -f caddy
 ```
+
+---
+
+## Room Recording (Egress)
+
+To enable room recording to S3-compatible storage:
+
+1. **Configure `.env`**:
+   - Add `egress` to `COMPOSE_PROFILES` (e.g., `caddy,egress`)
+   - Fill in `S3_*` credentials
+2. **Create Egress config:**
+   ```bash
+   cp config/egress.yaml.example config/egress.yaml
+   ```
+3. **Enable Redis** in `config/livekit.yaml` (uncomment `redis:` block).
+4. **Enable recording UI** in `build.env` (uncomment `NEXT_PUBLIC_LK_RECORD_ENDPOINT`).
+5. **Rebuild and apply:**
+   ```bash
+   docker compose up -d --build
+   ```
 
 ---
 
@@ -208,8 +250,8 @@ To route traffic through an existing reverse proxy (e.g., Nginx, Traefik, NPM) i
 livekit-meet-docker/
 ├── config/
 │   ├── Caddyfile              # Ingress routing rules
-│   ├── livekit.yaml           # SFU / WebRTC configuration
-│   └── livekit.yaml.example
+│   ├── egress.yaml.example    # Egress recording configuration
+│   └── livekit.yaml.example   # SFU / WebRTC configuration
 ├── meet/                      # LiveKit Meet application (managed via Git subtree)
 ├── templates/                 # Optional minimal UI replacements
 ├── Dockerfile                 # Multi-stage Next.js image definition
@@ -225,6 +267,7 @@ livekit-meet-docker/
 
 - [LiveKit Documentation](https://docs.livekit.io/)
 - [LiveKit Server Sample Configuration](https://github.com/livekit/livekit/blob/master/config-sample.yaml)
+- [LiveKit Egress Documentation](https://docs.livekit.io/home/self-hosting/egress/)
 - [LiveKit Meet Source Repository](https://github.com/livekit-examples/meet)
 
 ---

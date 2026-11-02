@@ -12,3 +12,7 @@ turn:
 
 audio:
   active_red_encoding: true
+
+# Uncomment if using the 'egress' profile for recording:
+# redis:
+#   address: redis:6379
