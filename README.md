@@ -15,6 +15,7 @@ Consult the official [LiveKit Documentation](https://docs.livekit.io/) for detai
 
 - **WebRTC SFU:** Low-latency selective forwarding unit for multi-party audio/video conferencing.
 - **End-to-End Encryption (E2EE):** Built-in client-side encryption.
+- **Noise Cancellation:** Client-side RNNoise audio processor with zero cloud dependencies.
 - **Automated SSL/TLS:** Automatic certificate management (Let's Encrypt / ZeroSSL) and HTTP/3 via Caddy.
 - **Optimized Container:** Multi-stage Next.js build based on Alpine Linux running under a non-root user.
 - **Modular Ingress:** Run with the bundled Caddy reverse proxy or integrate into an existing network (Nginx, Traefik, NPM).
@@ -113,6 +114,7 @@ EXTERNAL_NETWORK=false
 Configure frontend build settings in `build.env`:
 
 ```env
+# Enables the settings menu and built-in RNNoise audio filter
 NEXT_PUBLIC_SHOW_SETTINGS_MENU=true
 ```
 

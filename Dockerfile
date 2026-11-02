@@ -17,7 +17,7 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
 RUN pnpm build
-RUN pnpm prune --prod
+RUN CI=true pnpm prune --prod
 
 FROM node:alpine AS runner
 WORKDIR /app
