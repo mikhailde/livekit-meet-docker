@@ -17,15 +17,15 @@ importers:
       '@livekit/components-styles':
         specifier: 1.2.0
         version: 1.2.0
-      '@livekit/krisp-noise-filter':
-        specifier: 0.4.5
-        version: 0.4.5(livekit-client@2.23.0(@types/dom-mediacapture-record@1.0.22))
       '@livekit/track-processors':
         specifier: ^0.8.0
         version: 0.8.1(@types/dom-mediacapture-transform@0.1.11)(livekit-client@2.23.0(@types/dom-mediacapture-record@1.0.22))
       livekit-client:
         specifier: 2.23.0
         version: 2.23.0(@types/dom-mediacapture-record@1.0.22)
+      livekit-rnnoise-processor:
+        specifier: ^3.0.2
+        version: 3.0.2
       livekit-server-sdk:
         specifier: 2.19.1
         version: 2.19.1
@@ -1682,6 +1682,9 @@ packages:
     peerDependencies:
       '@types/dom-mediacapture-record': ^1
 
+  livekit-rnnoise-processor@3.0.2:
+    resolution: {integrity: sha512-6DEhNy/LToj5oUGtPKvCUcP/tDtjMARjAjrb/dhyZ3LKEscThpPTUn59eE+ZIkBwK8LUDbn/JVRgETAjdsf2qw==}
+
   livekit-server-sdk@2.19.1:
     resolution: {integrity: sha512-tqjM5oPDDNBrkb/64YReta9UWP32l1a2m0HHXq8WOuEzwxh4zsaXjeZZtPG4Er4eVAk4kjR+EMxH7lPKzg1g6g==}
     engines: {node: '>=19'}
@@ -2697,6 +2700,7 @@ snapshots:
       '@livekit/mutex': 1.1.1
       '@livekit/protocol': 1.52.1
       livekit-client: 2.23.0(@types/dom-mediacapture-record@1.0.22)
+    optional: true
 
   '@livekit/mutex@1.1.1': {}
 
@@ -4067,6 +4071,8 @@ snapshots:
       tslib: 2.8.1
       typed-emitter: 2.1.0
       webrtc-adapter: 9.0.6
+
+  livekit-rnnoise-processor@3.0.2: {}
 
   livekit-server-sdk@2.19.1:
     dependencies:
