@@ -5,8 +5,7 @@
 [![Next.js](https://img.shields.io/badge/Next.js-15-000000?style=flat-square&logo=next.js&logoColor=white)](https://nextjs.org/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg?style=flat-square)](LICENSE)
 
-> **A lightweight self-hosted alternative to Jitsi and Zoom.**  
-> Docker Compose stack bundling [LiveKit SFU](https://livekit.io/), [LiveKit Meet](https://github.com/livekit-examples/meet), and [Caddy](https://caddyserver.com/) with automated TLS.
+> **A lightweight self-hosted alternative to Jitsi and Zoom.**<br>Docker Compose stack bundling [LiveKit SFU](https://livekit.io/), [LiveKit Meet](https://github.com/livekit-examples/meet), and [Caddy](https://caddyserver.com/) with automated TLS.
 
 ![LiveKit Meet Interface](meet/.github/assets/livekit-meet.jpg)
 
@@ -27,7 +26,7 @@
 ## Prerequisites
 
 ### 1. Kernel UDP Buffer Sizing
-WebRTC media traffic uses UDP bursts. To prevent packet loss, increase the maximum socket buffer sizes:
+WebRTC media traffic uses UDP bursts. Increase maximum socket buffer sizes to prevent packet loss:
 
 `/etc/sysctl.d/99-livekit.conf`
 ```ini
@@ -72,8 +71,6 @@ Copy the example configuration files:
 cp .env.example .env
 cp build.env.example build.env
 cp config/livekit.yaml.example config/livekit.yaml
-# For 'egress' profile (recording):
-# cp config/egress.yaml.example config/egress.yaml
 ```
 
 Generate API credentials using the official LiveKit Docker image:
@@ -88,33 +85,18 @@ Configure `.env` with your domain and generated credentials:
 DOMAIN=meet.example.com
 LIVEKIT_URL=wss://meet.example.com
 
-# Generate via: docker run --rm livekit/livekit-server generate-keys
 LIVEKIT_API_KEY=your_api_key
 LIVEKIT_API_SECRET=your_api_secret
 
-# Profiles (comma-separated):
-#   caddy  - Automated TLS reverse proxy (omit if using external proxy)
-#   egress - Room recording (requires S3 credentials & redis in livekit.yaml)
 COMPOSE_PROFILES=caddy
-
 DOCKER_NETWORK=meet-net
 EXTERNAL_NETWORK=false
-
-# S3 (for egress profile)
-S3_KEY_ID=your_s3_access_key
-S3_KEY_SECRET=your_s3_secret_key
-S3_BUCKET=your_s3_bucket_name
-S3_ENDPOINT=https://s3.amazonaws.com
-S3_REGION=us-east-1
 ```
 
 Configure frontend build settings in `build.env`:
 
 ```env
 NEXT_PUBLIC_SHOW_SETTINGS_MENU=true
-
-# Uncomment for 'egress' profile:
-# NEXT_PUBLIC_LK_RECORD_ENDPOINT=/api/record
 ```
 
 Review `config/livekit.yaml`:
@@ -130,25 +112,12 @@ turn:
 
 audio:
   active_red_encoding: true
-
-# Uncomment if using the 'egress' profile for recording:
-# redis:
-#   address: redis:6379
 ```
 
 > [!NOTE]
 > For advanced server options (Redis clustering, TURN authentication, Webhooks, custom codecs), refer to the official [config-sample.yaml reference](https://github.com/livekit/livekit/blob/master/config-sample.yaml).
 
-### 3. (Optional) Custom Minimal UI
-
-To replace the default demo landing page with the bundled minimalist templates:
-
-```bash
-cp templates/app/layout.tsx meet/app/layout.tsx
-cp templates/app/page.tsx meet/app/page.tsx
-```
-
-### 4. Build and Launch
+### 3. Build and Launch
 
 Build and start the services in detached mode:
 
@@ -169,14 +138,17 @@ docker compose logs -f caddy
 
 ```mermaid
 graph TD
-    Client[Browser / Client] -->|HTTPS :443 / HTTP/3| Caddy[Caddy Reverse Proxy]
-    Client -->|WebRTC UDP :7882| LiveKit[LiveKit SFU Server]
-    Client -->|TURN UDP :3478| LiveKit
+    Client[Browser / Client] -->|HTTPS :443 / HTTP/3| Caddy
+    Client -->|WebRTC Media & TURN :7882, :7881, :3478| LiveKit
 
     subgraph Docker Network: meet-net
-        Caddy -->|/ | Meet[Next.js Web App :3000]
-        Caddy -->|/rtc* & /twirp* | LiveKit[LiveKit Server :7880]
-        Meet -->|Room / Token API :7880 | LiveKit
+        Caddy[Caddy Reverse Proxy]
+        Meet[Next.js Web App :3000]
+        LiveKit[LiveKit SFU Server :7880]
+
+        Caddy -->|Web UI /| Meet
+        Caddy -->|/rtc* & /twirp*| LiveKit
+        Meet -->|Room / Token API| LiveKit
     end
 ```
 
@@ -187,15 +159,29 @@ graph TD
 To enable room recording to S3-compatible storage:
 
 1. **Configure `.env`**:
-   - Add `egress` to `COMPOSE_PROFILES` (e.g., `caddy,egress`)
-   - Fill in `S3_*` credentials
+   * Add `egress` to profiles: `COMPOSE_PROFILES=caddy,egress`
+   * Add your S3 credentials:
+     ```env
+     S3_KEY_ID=your_s3_access_key
+     S3_KEY_SECRET=your_s3_secret_key
+     S3_BUCKET=your_s3_bucket_name
+     S3_ENDPOINT=https://s3.amazonaws.com
+     S3_REGION=us-east-1
+     ```
 2. **Create Egress config:**
    ```bash
    cp config/egress.yaml.example config/egress.yaml
    ```
-3. **Enable Redis** in `config/livekit.yaml` (uncomment `redis:` block).
-4. **Enable recording UI** in `build.env` (uncomment `NEXT_PUBLIC_LK_RECORD_ENDPOINT`).
-5. **Rebuild and apply:**
+3. **Enable Redis** in `config/livekit.yaml`:
+   ```yaml
+   redis:
+     address: redis:6379
+   ```
+4. **Enable recording UI** in `build.env`:
+   ```env
+   NEXT_PUBLIC_LK_RECORD_ENDPOINT=/api/record
+   ```
+5. **Apply changes:**
    ```bash
    docker compose up -d --build
    ```
@@ -219,6 +205,18 @@ To route traffic through an existing reverse proxy (e.g., Nginx, Traefik, NPM) i
 
 ---
 
+## Custom Minimal UI
+
+To replace the default demo landing page with the bundled minimalist templates:
+
+```bash
+cp templates/app/layout.tsx meet/app/layout.tsx
+cp templates/app/page.tsx meet/app/page.tsx
+docker compose up -d --build meet
+```
+
+---
+
 ## Operations & Maintenance
 
 - **View service logs:**
@@ -233,31 +231,6 @@ To route traffic through an existing reverse proxy (e.g., Nginx, Traefik, NPM) i
   git subtree pull --prefix meet https://github.com/livekit-examples/meet.git main --squash
   docker compose up -d --build meet
   ```
-
-- **Restart / Stop:**
-  ```bash
-  docker compose restart
-  docker compose down
-  ```
-
----
-
-## Directory Layout
-
-```text
-livekit-meet-docker/
-├── config/
-│   ├── Caddyfile              # Ingress routing rules
-│   ├── egress.yaml.example    # Egress recording configuration
-│   └── livekit.yaml.example   # SFU / WebRTC configuration
-├── meet/                      # LiveKit Meet application (managed via Git subtree)
-├── templates/                 # Optional minimal UI replacements
-├── Dockerfile                 # Multi-stage Next.js image definition
-├── docker-compose.yml         # Service orchestration definition
-├── build.env.example          # Build-time frontend environment defaults
-├── .env.example               # Runtime environment defaults
-└── README.md
-```
 
 ---
 
