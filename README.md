@@ -5,11 +5,10 @@
 [![Next.js](https://img.shields.io/badge/Next.js-15-000000?style=flat-square&logo=next.js&logoColor=white)](https://nextjs.org/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg?style=flat-square)](LICENSE)
 
-> **A lightweight self-hosted alternative to Jitsi and Zoom.** Docker Compose stack with automated TLS via Caddy, E2EE, and S3 recording.
+> **A lightweight self-hosted alternative to Jitsi and Zoom.**  
+> Docker Compose stack bundling [LiveKit SFU](https://livekit.io/), [LiveKit Meet](https://github.com/livekit-examples/meet), and [Caddy](https://caddyserver.com/) with automated TLS.
 
 ![LiveKit Meet Interface](meet/.github/assets/livekit-meet.jpg)
-
-Self-hosted WebRTC video conferencing stack comprising the [LiveKit SFU Server](https://livekit.io/), the [LiveKit Meet](https://github.com/livekit-examples/meet) Next.js web client, and an automated TLS reverse proxy using Caddy.
 
 ---
 
@@ -25,32 +24,14 @@ Self-hosted WebRTC video conferencing stack comprising the [LiveKit SFU Server](
 
 ---
 
-## Architecture & Traffic Flow
-
-```mermaid
-graph TD
-    Client[Browser / Client] -->|HTTPS :443 / HTTP/3| Caddy[Caddy Reverse Proxy]
-    Client -->|WebRTC UDP :7882| LiveKit[LiveKit SFU Server]
-    Client -->|TURN UDP :3478| LiveKit
-
-    subgraph Docker Network: meet-net
-        Caddy -->|/ | Meet[Next.js Web App :3000]
-        Caddy -->|/rtc* & /twirp* | LiveKit[LiveKit Server :7880]
-        Meet -->|Room / Token API :7880 | LiveKit
-    end
-```
-
----
-
-## System & Network Requirements
+## Prerequisites
 
 ### 1. Kernel UDP Buffer Sizing
-WebRTC media traffic uses UDP bursts. To prevent packet loss, increase the maximum socket receive and send buffer sizes.
-
-For baseline deployments (~3 active participants), set at least:
+WebRTC media traffic uses UDP bursts. To prevent packet loss, increase the maximum socket buffer sizes:
 
 `/etc/sysctl.d/99-livekit.conf`
 ```ini
+# Standard (8MB) | High-load (64MB): 67108864
 net.core.rmem_max=8388608
 net.core.wmem_max=8388608
 ```
@@ -60,11 +41,9 @@ Apply changes:
 sudo sysctl --system
 ```
 
-*(For larger rooms or production deployments under heavy load, LiveKit recommends higher values such as `67108864`).*
-
 ### 2. Firewall / Port Allocations
 
-The following ports must be reachable on the host:
+Ensure the following ports are reachable on the host:
 
 | Port | Protocol | Service | Purpose |
 | :--- | :--- | :--- | :--- |
@@ -182,6 +161,23 @@ Monitor container health and certificate generation:
 ```bash
 docker compose ps
 docker compose logs -f caddy
+```
+
+---
+
+## Architecture & Traffic Flow
+
+```mermaid
+graph TD
+    Client[Browser / Client] -->|HTTPS :443 / HTTP/3| Caddy[Caddy Reverse Proxy]
+    Client -->|WebRTC UDP :7882| LiveKit[LiveKit SFU Server]
+    Client -->|TURN UDP :3478| LiveKit
+
+    subgraph Docker Network: meet-net
+        Caddy -->|/ | Meet[Next.js Web App :3000]
+        Caddy -->|/rtc* & /twirp* | LiveKit[LiveKit Server :7880]
+        Meet -->|Room / Token API :7880 | LiveKit
+    end
 ```
 
 ---
