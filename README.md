@@ -5,9 +5,11 @@
 [![Next.js](https://img.shields.io/badge/Next.js-15-000000?style=flat-square&logo=next.js&logoColor=white)](https://nextjs.org/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg?style=flat-square)](LICENSE)
 
-Self-hosted WebRTC video conferencing stack comprising the [LiveKit SFU Server](https://livekit.io/), the [LiveKit Meet](https://github.com/livekit-examples/meet) Next.js web client, and an automated TLS reverse proxy using Caddy.
+> **A lightweight self-hosted alternative to Jitsi and Zoom.** Docker Compose stack with automated TLS via Caddy, E2EE, and S3 recording.
 
-Consult the official [LiveKit Documentation](https://docs.livekit.io/) for detailed server architecture and client SDK capabilities.
+![LiveKit Meet Interface](meet/.github/assets/livekit-meet.jpg)
+
+Self-hosted WebRTC video conferencing stack comprising the [LiveKit SFU Server](https://livekit.io/), the [LiveKit Meet](https://github.com/livekit-examples/meet) Next.js web client, and an automated TLS reverse proxy using Caddy.
 
 ---
 
