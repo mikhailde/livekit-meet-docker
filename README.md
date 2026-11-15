@@ -18,7 +18,7 @@
 - **Noise Cancellation:** Client-side RNNoise audio processor with zero cloud dependencies.
 - **Room Recording:** Server-side recording to S3-compatible storage via Egress.
 - **Automated SSL/TLS:** Certificate management (Let's Encrypt / ZeroSSL) and HTTP/3 via Caddy.
-- **Optimized Container:** Multi-stage Next.js build based on Alpine Linux running under a non-root user.
+- **Optimized Container:** Multi-stage Next.js standalone build based on Alpine Linux running under a non-root user.
 - **Modular Ingress:** Run with the bundled Caddy reverse proxy or integrate into an existing network (Nginx, Traefik, NPM).
 
 ---
@@ -50,6 +50,9 @@ Ensure the following ports are reachable on the host:
 | **443** | TCP / UDP | Caddy | HTTPS / HTTP/3 (Web UI and WebRTC signaling) |
 | **7881** | TCP | LiveKit | WebRTC fallback over TCP |
 | **7882** | UDP | LiveKit | WebRTC media traffic (RTP/RTCP) |
+
+> [!IMPORTANT]
+> If using Cloudflare DNS, set the record to **DNS only** (grey cloud). Cloudflare Proxy (orange cloud) and Cloudflare Tunnels do not forward WebRTC traffic on ports `7881` and `7882`.
 
 ---
 
@@ -129,7 +132,7 @@ graph TD
 
         Caddy -->|Web UI /| Meet
         Caddy -->|/rtc* & /twirp*| LiveKit
-        Meet -->|Room / Token API| LiveKit
+        Meet -->|Egress API| LiveKit
     end
 
     subgraph internal["Internal Network: internal"]
@@ -146,6 +149,9 @@ graph TD
 ---
 
 ## Room Recording (Egress)
+
+> [!NOTE]
+> `livekit/egress` runs headless Chromium for room compositing and is significantly heavier than the base stack (minimum **4 vCPU / 4 GB RAM** recommended).
 
 To enable room recording to S3-compatible storage:
 
@@ -189,8 +195,8 @@ To route traffic through an existing reverse proxy (e.g., Nginx, Traefik, NPM) i
    ```
 
 3. Forward incoming traffic:
-   - Route `/rtc*` and `/twirp*` to `http://livekit:7880` (WebSocket / Upgrade headers must be enabled).
-   - Route all other requests (`/`) to `http://meet:3000`.
+   - Route `/rtc*` and `/twirp*` to `http://livekit:7880` (WebSocket / `Upgrade` headers must be enabled).
+   - Route all other requests (`/`) to `http://meet:3000` (preserve `Cross-Origin-Opener-Policy` and `Cross-Origin-Embedder-Policy` headers).
 
 > [!NOTE]
 > If your reverse proxy runs directly on the host rather than inside Docker, expose `127.0.0.1:7880:7880` on `livekit` and `127.0.0.1:3000:3000` on `meet` in `docker-compose.yml`.
@@ -206,6 +212,12 @@ cp templates/app/layout.tsx meet/app/layout.tsx
 cp templates/app/page.tsx meet/app/page.tsx
 docker compose up -d --build meet
 ```
+
+---
+
+## Security Notice
+
+The upstream `meet` frontend has **no built-in authentication**: anyone who discovers your domain (e.g., via public Certificate Transparency logs) can create rooms and, if `egress` is enabled, trigger recordings to your S3 bucket. For private deployments, restrict access to the web UI at your reverse proxy while keeping `/rtc*` and `/twirp*` open (note that external guests will also need credentials to join).
 
 ---
 
