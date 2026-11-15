@@ -17,7 +17,7 @@ services:
       timeout: 3s
       retries: 3
     logging: *logging
-    networks: [proxy-net]
+    networks: [internal]
 
   livekit:
     image: livekit/livekit-server:latest
@@ -25,14 +25,13 @@ services:
     restart: unless-stopped
     command: --config /etc/livekit.yaml
     environment:
-      LIVEKIT_KEYS: "${LIVEKIT_API_KEY}: ${LIVEKIT_API_SECRET}"
+      - "LIVEKIT_KEYS=${LIVEKIT_API_KEY}: ${LIVEKIT_API_SECRET}"
+      - REDIS_HOST
     volumes:
       - ./config/livekit.yaml:/etc/livekit.yaml:ro
     ports:
       - "7881:7881"
       - "7882:7882/udp"
-      - "3478:3478/udp"
-      - "127.0.0.1:7880:7880"
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:7880/"]
       interval: 10s
@@ -42,7 +41,7 @@ services:
     ulimits:
       nofile: 65535
     logging: *logging
-    networks: [proxy-net]
+    networks: [internal, public]
 
   egress:
     profiles: [egress]
@@ -68,7 +67,7 @@ services:
       livekit:
         condition: service_healthy
     logging: *logging
-    networks: [proxy-net]
+    networks: [internal, public]
 
   meet:
     build: .
@@ -83,8 +82,6 @@ services:
       - S3_BUCKET
       - S3_ENDPOINT
       - S3_REGION
-    ports:
-      - "127.0.0.1:3000:3000"
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000"]
       interval: 15s
@@ -95,7 +92,7 @@ services:
       livekit:
         condition: service_healthy
     logging: *logging
-    networks: [proxy-net]
+    networks: [public]
 
   caddy:
     profiles: [caddy]
@@ -105,6 +102,7 @@ services:
     ports:
       - "80:80"
       - "443:443"
+      - "443:443/udp"
     environment:
       - DOMAIN
     volumes:
@@ -117,13 +115,14 @@ services:
       meet:
         condition: service_healthy
     logging: *logging
-    networks: [proxy-net]
+    networks: [public]
 
 volumes:
   caddy_data:
   caddy_config:
 
 networks:
-  proxy-net:
-    name: ${DOCKER_NETWORK:-meet-net}
-    external: ${EXTERNAL_NETWORK:-false}
+  internal:
+    internal: true
+  public:
+    name: meet-net

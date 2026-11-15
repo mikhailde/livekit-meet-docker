@@ -50,7 +50,6 @@ Ensure the following ports are reachable on the host:
 | **443** | TCP / UDP | Caddy | HTTPS / HTTP/3 (Web UI and WebRTC signaling) |
 | **7881** | TCP | LiveKit | WebRTC fallback over TCP |
 | **7882** | UDP | LiveKit | WebRTC media traffic (RTP/RTCP) |
-| **3478** | UDP | LiveKit | Integrated TURN server |
 
 ---
 
@@ -65,12 +64,11 @@ cd livekit-meet-docker
 
 ### 2. Configuration Setup
 
-Copy the example configuration files:
+Copy the example environment files:
 
 ```bash
 cp .env.example .env
 cp build.env.example build.env
-cp config/livekit.yaml.example config/livekit.yaml
 ```
 
 Generate API credentials using the official LiveKit Docker image:
@@ -89,8 +87,6 @@ LIVEKIT_API_KEY=your_api_key
 LIVEKIT_API_SECRET=your_api_secret
 
 COMPOSE_PROFILES=caddy
-DOCKER_NETWORK=meet-net
-EXTERNAL_NETWORK=false
 ```
 
 Configure frontend build settings in `build.env`:
@@ -99,23 +95,8 @@ Configure frontend build settings in `build.env`:
 NEXT_PUBLIC_SHOW_SETTINGS_MENU=true
 ```
 
-Review `config/livekit.yaml`:
-```yaml
-rtc:
-  udp_port: 7882
-  tcp_port: 7881
-  use_external_ip: true # Detects public IP via STUN
-
-turn:
-  enabled: true
-  udp_port: 3478
-
-audio:
-  active_red_encoding: true
-```
-
 > [!NOTE]
-> For advanced server options (Redis clustering, TURN authentication, Webhooks, custom codecs), refer to the official [config-sample.yaml reference](https://github.com/livekit/livekit/blob/master/config-sample.yaml).
+> Default server settings are preconfigured in `config/livekit.yaml`. For advanced server options (Redis clustering, TURN, Webhooks, custom codecs), refer to the official [config-sample.yaml reference](https://github.com/livekit/livekit/blob/master/config-sample.yaml).
 
 ### 3. Build and Launch
 
@@ -139,9 +120,9 @@ docker compose logs -f caddy
 ```mermaid
 graph TD
     Client[Browser / Client] -->|HTTPS :443 / HTTP/3| Caddy
-    Client -->|WebRTC Media & TURN :7882, :7881, :3478| LiveKit
+    Client -->|WebRTC Media :7882, :7881| LiveKit
 
-    subgraph Docker Network: meet-net
+    subgraph public["Public Network: meet-net"]
         Caddy[Caddy Reverse Proxy]
         Meet[Next.js Web App :3000]
         LiveKit[LiveKit SFU Server :7880]
@@ -150,6 +131,16 @@ graph TD
         Caddy -->|/rtc* & /twirp*| LiveKit
         Meet -->|Room / Token API| LiveKit
     end
+
+    subgraph internal["Internal Network: internal"]
+        Egress[LiveKit Egress]
+        Redis[Redis :6379]
+
+        Egress <--> Redis
+    end
+
+    LiveKit <--> Redis
+    LiveKit <--> Egress
 ```
 
 ---
@@ -159,29 +150,21 @@ graph TD
 To enable room recording to S3-compatible storage:
 
 1. **Configure `.env`**:
-   * Add `egress` to profiles: `COMPOSE_PROFILES=caddy,egress`
-   * Add your S3 credentials:
+   * Add `egress` to profiles: `COMPOSE_PROFILES=caddy,egress` (or `COMPOSE_PROFILES=egress` when using an external reverse proxy)
+   * Uncomment `REDIS_HOST` and set your S3 credentials:
      ```env
+     REDIS_HOST=redis:6379
      S3_KEY_ID=your_s3_access_key
      S3_KEY_SECRET=your_s3_secret_key
      S3_BUCKET=your_s3_bucket_name
      S3_ENDPOINT=https://s3.amazonaws.com
      S3_REGION=us-east-1
      ```
-2. **Create Egress config:**
-   ```bash
-   cp config/egress.yaml.example config/egress.yaml
-   ```
-3. **Enable Redis** in `config/livekit.yaml`:
-   ```yaml
-   redis:
-     address: redis:6379
-   ```
-4. **Enable recording UI** in `build.env`:
+2. **Enable recording UI** in `build.env`:
    ```env
    NEXT_PUBLIC_LK_RECORD_ENDPOINT=/api/record
    ```
-5. **Apply changes:**
+3. **Apply changes:**
    ```bash
    docker compose up -d --build
    ```
@@ -192,16 +175,25 @@ To enable room recording to S3-compatible storage:
 
 To route traffic through an existing reverse proxy (e.g., Nginx, Traefik, NPM) instead of Caddy:
 
-1. In `.env`, disable the Caddy profile and connect to your Docker network:
+1. In `.env`, disable the `caddy` profile:
    ```env
    COMPOSE_PROFILES=
-   EXTERNAL_NETWORK=true
-   DOCKER_NETWORK=your_proxy_network
+   ```
+   *(Use `COMPOSE_PROFILES=egress` if room recording is enabled.)*
+
+2. Attach your reverse proxy container to the `meet-net` network (declare it as an external network in your reverse proxy's `docker-compose.yml`):
+   ```yaml
+   networks:
+     meet-net:
+       external: true
    ```
 
-2. Forward incoming traffic:
+3. Forward incoming traffic:
    - Route `/rtc*` and `/twirp*` to `http://livekit:7880` (WebSocket / Upgrade headers must be enabled).
    - Route all other requests (`/`) to `http://meet:3000`.
+
+> [!NOTE]
+> If your reverse proxy runs directly on the host rather than inside Docker, expose `127.0.0.1:7880:7880` on `livekit` and `127.0.0.1:3000:3000` on `meet` in `docker-compose.yml`.
 
 ---
 
