@@ -230,12 +230,14 @@ The upstream `meet` frontend has **no built-in authentication**: anyone who disc
   ```
 
 - **Update the Meet application (Git Subtree):**
-  The `meet` folder is tracked via Git subtree. To pull changes from upstream:
+  The `meet` folder is tracked via Git subtree. Because upstream uses Git LFS for background images, fetch LFS objects before pulling:
   ```bash
-  git subtree pull --prefix meet https://github.com/livekit-examples/meet.git main --squash
+  git remote add meet-upstream https://github.com/livekit-examples/meet.git  # one-time setup
+  git fetch meet-upstream main
+  git lfs fetch meet-upstream refs/remotes/meet-upstream/main
+  git subtree pull --prefix meet meet-upstream main --squash
   docker compose up -d --build meet
   ```
-
 ---
 
 ## References
