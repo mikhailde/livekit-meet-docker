@@ -32,6 +32,10 @@ services:
     ports:
       - "7881:7881"
       - "7882:7882/udp"
+    depends_on:
+      redis:
+        condition: service_healthy
+        required: false
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:7880/"]
       interval: 10s

@@ -1,6 +1,7 @@
 .git
 **/node_modules
 **/.next
-.env
-.env*.local
-*.log
+**/out
+**/.env
+**/.env*.local
+**/*.log
