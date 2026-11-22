@@ -246,6 +246,7 @@ The upstream `meet` frontend has **no built-in authentication**: anyone who disc
 - [LiveKit Server Sample Configuration](https://github.com/livekit/livekit/blob/master/config-sample.yaml)
 - [LiveKit Egress Documentation](https://docs.livekit.io/home/self-hosting/egress/)
 - [LiveKit Meet Source Repository](https://github.com/livekit-examples/meet)
+- [LiveKit RNNoise Processor](https://github.com/Dadadah/livekit-rnnoise-processor)
 
 ---
 
