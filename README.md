@@ -238,6 +238,7 @@ The upstream `meet` frontend has **no built-in authentication**: anyone who disc
   git subtree pull --prefix meet meet-upstream main --squash
   docker compose up -d --build meet
   ```
+
 ---
 
 ## References
